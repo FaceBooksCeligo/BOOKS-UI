@@ -131,7 +131,9 @@ export default function NewSalesOrderPage() {
     const extendedAmount = lineAmount - discountAmount;
     
     // Calculate tax
-    const taxCode = taxCodes.find(tc => tc._id === item.taxCodeId);
+    const taxCode = item.taxCodeId && item.taxCodeId !== "no-tax" 
+      ? taxCodes.find(tc => tc._id === item.taxCodeId) 
+      : null;
     const taxAmount = taxCode ? extendedAmount * (taxCode.rate / 100) : 0;
     
     return {
@@ -412,7 +414,7 @@ export default function NewSalesOrderPage() {
                               <span className="font-medium">Total:</span> ${item.extendedAmount.toFixed(2)}
                             </div>
                           </div>
-                          {item.taxCodeId && (
+                          {item.taxCodeId && item.taxCodeId !== "no-tax" && (
                             <div className="mt-2 text-sm text-muted-foreground">
                               <span className="font-medium">Tax:</span> {taxCodes.find(tc => tc._id === item.taxCodeId)?.name} (${item.taxAmount.toFixed(2)})
                             </div>
@@ -552,7 +554,7 @@ export default function NewSalesOrderPage() {
                             <SelectValue placeholder="Select tax code" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="">No Tax</SelectItem>
+                            <SelectItem value="no-tax">No Tax</SelectItem>
                             {taxCodes.map((taxCode) => (
                               <SelectItem key={taxCode._id} value={taxCode._id}>
                                 {taxCode.code} - {taxCode.name} ({taxCode.rate}%)

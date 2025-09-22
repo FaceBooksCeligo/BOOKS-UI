@@ -34,10 +34,21 @@ interface ItemForm {
   notes: string;
 }
 
+interface Account {
+  _id: string;
+  code: string;
+  name: string;
+  type: string;
+  status: string;
+  description?: string;
+}
+
 export default function NewItemPage() {
   const router = useRouter();
   const { user, orgId } = useAuthStore();
   const [loading, setLoading] = useState(false);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [accountsLoading, setAccountsLoading] = useState(true);
   const [form, setForm] = useState<ItemForm>({
     sku: "",
     name: "",
@@ -54,9 +65,29 @@ export default function NewItemPage() {
     isService: false,
     incomeAccount: "",
     expenseAccount: "",
-    assetAccount: "",
+    assetAccount: "no-asset",
     notes: "",
   });
+
+  // Load accounts on component mount
+  useEffect(() => {
+    loadAccounts();
+  }, []);
+
+  const loadAccounts = async () => {
+    try {
+      setAccountsLoading(true);
+      const response = await api.get("/v1/accounts?filter[status]=ACTIVE&limit=1000");
+      if (response.success) {
+        setAccounts(response.data || []);
+      }
+    } catch (error) {
+      console.error("Failed to load accounts:", error);
+      toast.error("Failed to load accounts");
+    } finally {
+      setAccountsLoading(false);
+    }
+  };
 
   const handleInputChange = (field: keyof ItemForm, value: any) => {
     setForm(prev => ({
@@ -64,6 +95,13 @@ export default function NewItemPage() {
       [field]: value
     }));
   };
+
+  // Helper functions to filter accounts by type
+  const getRevenueAccounts = () => accounts.filter(account => account.type === 'REVENUE');
+  const getExpenseAccounts = () => accounts.filter(account => account.type === 'EXPENSE');
+  const getAssetAccounts = () => accounts.filter(account => account.type === 'ASSET');
+
+  const getAccountDisplayName = (account: Account) => `${account.code} - ${account.name}`;
 
   const handleSave = async () => {
     try {
@@ -85,7 +123,7 @@ export default function NewItemPage() {
         isService: form.isService,
         incomeAccountId: form.incomeAccount || null, // Map to incomeAccountId
         expenseAccountId: form.expenseAccount || null, // Map to expenseAccountId
-        assetAccountId: form.assetAccount || null, // Map to assetAccountId
+        assetAccountId: form.assetAccount && form.assetAccount !== "no-asset" ? form.assetAccount : null, // Map to assetAccountId
         notes: form.notes,
         organizationId: orgId,
         createdBy: user?._id,
@@ -125,7 +163,7 @@ export default function NewItemPage() {
         isService: form.isService,
         incomeAccountId: form.incomeAccount || null, // Map to incomeAccountId
         expenseAccountId: form.expenseAccount || null, // Map to expenseAccountId
-        assetAccountId: form.assetAccount || null, // Map to assetAccountId
+        assetAccountId: form.assetAccount && form.assetAccount !== "no-asset" ? form.assetAccount : null, // Map to assetAccountId
         notes: form.notes,
         organizationId: orgId,
         createdBy: user?._id,
@@ -151,7 +189,7 @@ export default function NewItemPage() {
           isService: false,
           incomeAccount: "",
           expenseAccount: "",
-          assetAccount: "",
+          assetAccount: "no-asset",
           notes: "",
         });
       } else {
@@ -368,32 +406,61 @@ export default function NewItemPage() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="incomeAccount">Income Account *</Label>
-                  <Input
-                    id="incomeAccount"
+                  <Select
                     value={form.incomeAccount}
-                    onChange={(e) => handleInputChange("incomeAccount", e.target.value)}
-                    placeholder="e.g., 4000 - Sales Revenue"
-                    required
-                  />
+                    onValueChange={(value) => handleInputChange("incomeAccount", value)}
+                    disabled={accountsLoading}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={accountsLoading ? "Loading accounts..." : "Select income account"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getRevenueAccounts().map((account) => (
+                        <SelectItem key={account._id} value={account._id}>
+                          {getAccountDisplayName(account)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="expenseAccount">Expense Account *</Label>
-                  <Input
-                    id="expenseAccount"
+                  <Select
                     value={form.expenseAccount}
-                    onChange={(e) => handleInputChange("expenseAccount", e.target.value)}
-                    placeholder="e.g., 5000 - Cost of Goods Sold"
-                    required
-                  />
+                    onValueChange={(value) => handleInputChange("expenseAccount", value)}
+                    disabled={accountsLoading}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={accountsLoading ? "Loading accounts..." : "Select expense account"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getExpenseAccounts().map((account) => (
+                        <SelectItem key={account._id} value={account._id}>
+                          {getAccountDisplayName(account)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="assetAccount">Asset Account</Label>
-                  <Input
-                    id="assetAccount"
+                  <Select
                     value={form.assetAccount}
-                    onChange={(e) => handleInputChange("assetAccount", e.target.value)}
-                    placeholder="e.g., 1200 - Inventory"
-                  />
+                    onValueChange={(value) => handleInputChange("assetAccount", value)}
+                    disabled={accountsLoading}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={accountsLoading ? "Loading accounts..." : "Select asset account (optional)"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="no-asset">No Asset Account</SelectItem>
+                      {getAssetAccounts().map((account) => (
+                        <SelectItem key={account._id} value={account._id}>
+                          {getAccountDisplayName(account)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </CardContent>

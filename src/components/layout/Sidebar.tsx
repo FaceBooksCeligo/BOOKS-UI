@@ -225,7 +225,7 @@ export default function Sidebar() {
           </div>
           <div>
             <h1 className="text-lg font-bold text-white">Accounting</h1>
-            <p className="text-xs text-gray-400">QuickBooks-class ERP</p>
+            <p className="text-xs text-gray-400">CeligoBook-class ERP</p>
           </div>
         </div>
       </div>

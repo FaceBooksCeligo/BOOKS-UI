@@ -6,7 +6,7 @@ import type { Metadata } from "next";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Accounting UI - QuickBooks-class ERP",
+  title: "Accounting UI - CeligoBook-class ERP",
   description: "Complete accounting and business management system",
 };
 

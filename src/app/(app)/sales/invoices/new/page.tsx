@@ -131,7 +131,9 @@ export default function NewInvoicePage() {
     const extendedAmount = lineAmount - discountAmount;
     
     // Calculate tax
-    const taxCode = taxCodes.find(tc => tc._id === item.taxCodeId);
+    const taxCode = item.taxCodeId && item.taxCodeId !== "no-tax" 
+      ? taxCodes.find(tc => tc._id === item.taxCodeId) 
+      : null;
     const taxAmount = taxCode ? extendedAmount * (taxCode.rate / 100) : 0;
     
     return {
@@ -244,7 +246,7 @@ export default function NewInvoicePage() {
         description: item.name,
         unitPrice: parseFloat(item.pricing.basePrice),
         unitOfMeasure: item.uom,
-        taxCodeId: item.taxCodeId || ""
+        taxCodeId: item.taxCodeId || "no-tax"
       }));
     }
   };
@@ -552,7 +554,7 @@ export default function NewInvoicePage() {
                             <SelectValue placeholder="Select tax code" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="">No Tax</SelectItem>
+                            <SelectItem value="no-tax">No Tax</SelectItem>
                             {taxCodes.map((taxCode) => (
                               <SelectItem key={taxCode._id} value={taxCode._id}>
                                 {taxCode.code} - {taxCode.name} ({taxCode.rate}%)
