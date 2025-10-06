@@ -59,8 +59,12 @@ export default function CreditsPage() {
   const loadCredits = async () => {
     try {
       setLoading(true);
-      const response = await api.get("/v1/credit-memos");
-      setCredits((response.data as CreditMemo[]) || []);
+      const response = await api.getCreditMemos();
+      console.log("Credits API response:", response);
+      console.log("Response data:", response.data);
+      console.log("Is array:", Array.isArray(response.data));
+      const creditsData = Array.isArray(response.data) ? response.data : [];
+      setCredits(creditsData as CreditMemo[]);
     } catch (error: any) {
       console.error("Error loading credit memos:", error);
       toast.error("Failed to load credit memos");
@@ -230,7 +234,7 @@ export default function CreditsPage() {
     },
   ];
 
-  const filteredCredits = credits.filter(credit => {
+  const filteredCredits = (Array.isArray(credits) ? credits : []).filter(credit => {
     if (!credit) return false;
     
     const creditNumber = credit.creditMemoNumber || '';
@@ -240,12 +244,13 @@ export default function CreditsPage() {
            customerName.toLowerCase().includes(searchTerm.toLowerCase());
   });
 
+  const creditsArray = Array.isArray(credits) ? credits : [];
   const creditSummary = {
-    total: credits.length,
-    draft: credits.filter(c => c && c.status === 'DRAFT').length,
-    sent: credits.filter(c => c && c.status === 'SENT').length,
-    applied: credits.filter(c => c && c.status === 'APPLIED').length,
-    totalValue: credits.reduce((sum, c) => sum + (c?.totalAmount || 0), 0),
+    total: creditsArray.length,
+    draft: creditsArray.filter(c => c && c.status === 'DRAFT').length,
+    sent: creditsArray.filter(c => c && c.status === 'SENT').length,
+    applied: creditsArray.filter(c => c && c.status === 'APPLIED').length,
+    totalValue: creditsArray.reduce((sum, c) => sum + (c?.totalAmount || 0), 0),
   };
 
   return (

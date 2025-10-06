@@ -29,7 +29,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuthStore } from "@/lib/auth";
-import api from "@/lib/api";
+import api, { apiClient } from "@/lib/api";
 import { toast } from "react-hot-toast";
 
 interface Customer {
@@ -60,7 +60,7 @@ interface Customer {
 
 export default function CustomersPage() {
   const router = useRouter();
-  const { user, isAuthenticated, token } = useAuthStore();
+  const { user, isAuthenticated, token, orgId } = useAuthStore();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -80,16 +80,27 @@ export default function CustomersPage() {
     try {
       setLoading(true);
       console.log("Loading customers...");
-      const response = await api.get("/v1/contacts?filter[type]=CUSTOMER");
+      console.log("Current auth state:", { isAuthenticated, token: !!token, user: !!user, orgId });
+      console.log("API client state:", { 
+        hasToken: !!apiClient.token, 
+        hasOrgId: !!apiClient.orgId 
+      });
+      const response = await api.getContacts({ "filter[type]": "CUSTOMER" });
       console.log("API Response:", response);
       
       if (response.success) {
         console.log("Raw customer data:", response.data);
-        const customerData = response.data.map((customer: any) => {
+        console.log("Response structure:", response);
+        
+        // Handle both array and object responses
+        const rawData = Array.isArray(response.data) ? response.data : response.data.data || [];
+        console.log("Raw data array:", rawData);
+        
+        const customerData = rawData.map((customer: any) => {
           console.log("Processing customer:", customer);
           return {
-            id: customer._id,
-            displayName: customer.displayName,
+            id: customer._id || customer.id,
+            displayName: customer.displayName || customer.fullName,
             firstName: customer.firstName,
             lastName: customer.lastName,
             email: customer.email,
@@ -130,6 +141,8 @@ export default function CustomersPage() {
   console.log("Render - isAuthenticated:", isAuthenticated, "token:", !!token, "user:", !!user);
   console.log("Customers state:", customers);
   console.log("Filtered customers:", filteredCustomers);
+  console.log("Customers length:", customers.length);
+  console.log("First customer:", customers[0]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -176,7 +189,9 @@ export default function CustomersPage() {
       accessorKey: "displayName",
       header: "Customer",
       cell: ({ row }: any) => {
-        const customer = row.original;
+        const customer = row.original || row;
+        console.log("Customer cell - row:", row);
+        console.log("Customer cell - customer:", customer);
         
         // Add null checks and debugging
         if (!customer) {
@@ -187,7 +202,7 @@ export default function CustomersPage() {
                 <User className="h-4 w-4 text-gray-600" />
               </div>
               <div>
-                <div className="font-medium text-gray-900">Loading...</div>
+                <div className="font-medium text-gray-900">No Data</div>
                 <div className="text-sm text-gray-500">-</div>
               </div>
             </div>
@@ -215,7 +230,7 @@ export default function CustomersPage() {
       accessorKey: "phone",
       header: "Phone",
       cell: ({ row }: any) => {
-        const phone = row.original?.phone;
+        const phone = (row.original || row)?.phone;
         return (
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <Phone className="h-4 w-4" />
@@ -228,7 +243,7 @@ export default function CustomersPage() {
       accessorKey: "address",
       header: "Address",
       cell: ({ row }: any) => {
-        const address = row.original?.address;
+        const address = (row.original || row)?.address;
         if (!address) return <div className="text-sm text-gray-500">—</div>;
         return (
           <div className="flex items-start gap-2 text-sm text-gray-600">
@@ -246,7 +261,7 @@ export default function CustomersPage() {
       accessorKey: "customer.creditLimit",
       header: "Credit Limit",
       cell: ({ row }: any) => {
-        const creditLimit = row.original?.customer?.creditLimit;
+        const creditLimit = (row.original || row)?.customer?.creditLimit;
         return (
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <CreditCard className="h-4 w-4" />
@@ -259,7 +274,7 @@ export default function CustomersPage() {
       accessorKey: "customer.terms",
       header: "Payment Terms",
       cell: ({ row }: any) => {
-        const terms = row.original?.customer?.terms;
+        const terms = (row.original || row)?.customer?.terms;
         return (
           <div className="text-sm text-gray-600">
             {terms ? `${terms.name || 'Net'} ${terms.days || 0}` : "—"}
@@ -271,13 +286,13 @@ export default function CustomersPage() {
       accessorKey: "status",
       header: "Status",
       cell: ({ row }: any) => {
-        const status = row.original?.status;
+        const status = (row.original || row)?.status;
         return (
           <Badge 
             variant={status === "ACTIVE" ? "default" : "secondary"}
             className={status === "ACTIVE" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-600"}
           >
-            {status || "UNKNOWN"}
+            {status || "INACTIVE"}
           </Badge>
         );
       },
@@ -286,7 +301,7 @@ export default function CustomersPage() {
       accessorKey: "createdAt",
       header: "Created",
       cell: ({ row }: any) => {
-        const createdAt = row.original?.createdAt;
+        const createdAt = (row.original || row)?.createdAt;
         return (
           <div className="flex items-center gap-2 text-sm text-gray-500">
             <Calendar className="h-4 w-4" />
@@ -299,7 +314,7 @@ export default function CustomersPage() {
       id: "actions",
       header: "Actions",
       cell: ({ row }: any) => {
-        const customer = row.original;
+        const customer = row.original || row;
         console.log("Actions cell - customer:", customer);
         console.log("Actions cell - customer.id:", customer?.id);
         
@@ -473,6 +488,13 @@ export default function CustomersPage() {
               Export
             </Button>
             <Button 
+              onClick={loadCustomers}
+              variant="outline" 
+              className="border-gray-300 text-gray-700 hover:bg-gray-50"
+            >
+              Refresh Data
+            </Button>
+            <Button 
               onClick={() => router.push("/sales/customers/new")}
               className="bg-gray-900 hover:bg-gray-800 text-white"
             >
@@ -585,6 +607,7 @@ export default function CustomersPage() {
               <DataTable
                 columns={columns}
                 data={filteredCustomers}
+                loading={loading}
                 className="border-0"
               />
             )}

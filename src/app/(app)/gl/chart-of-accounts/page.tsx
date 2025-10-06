@@ -29,9 +29,8 @@ interface Account {
   createdAt: string;
 }
 
-const router = useRouter();
-
 export default function ChartOfAccountsPage() {
+  const router = useRouter();
   const { user } = useAuthStore();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
@@ -90,21 +89,21 @@ export default function ChartOfAccountsPage() {
       accessorKey: "code",
       header: "Account Code",
       cell: ({ row }: any) => (
-        <div className="font-mono text-sm">{row.getValue("code")}</div>
+        <div className="font-mono text-sm">{row.code}</div>
       ),
     },
     {
       accessorKey: "name",
       header: "Account Name",
       cell: ({ row }: any) => (
-        <div className="font-medium">{row.getValue("name")}</div>
+        <div className="font-medium">{row.name}</div>
       ),
     },
     {
       accessorKey: "type",
       header: "Type",
       cell: ({ row }: any) => (
-        <Badge variant="outline">{row.getValue("type")}</Badge>
+        <Badge variant="outline">{row.type}</Badge>
       ),
     },
     {
@@ -112,7 +111,7 @@ export default function ChartOfAccountsPage() {
       header: "Balance",
       cell: ({ row }: any) => (
         <div className="text-right font-mono">
-          ${row.getValue("balance")?.toLocaleString() || "0.00"}
+          ${row.balance?.toLocaleString() || "0.00"}
         </div>
       ),
     },
@@ -121,9 +120,9 @@ export default function ChartOfAccountsPage() {
       header: "Status",
       cell: ({ row }: any) => (
         <Badge 
-          variant={row.getValue("status") === "ACTIVE" ? "default" : "secondary"}
+          variant={row.status === "ACTIVE" ? "default" : "secondary"}
         >
-          {row.getValue("status")}
+          {row.status}
         </Badge>
       ),
     },
@@ -138,11 +137,11 @@ export default function ChartOfAccountsPage() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => handleView(row.original.id)}>
+            <DropdownMenuItem onClick={() => handleView(row.id)}>
               <Eye className="h-4 w-4 mr-2" />
               View
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleView(row.original.id)}>
+            <DropdownMenuItem onClick={() => handleView(row.id)}>
               <Eye className="h-4 w-4 mr-2" />
               View
             </DropdownMenuItem>
@@ -176,7 +175,7 @@ export default function ChartOfAccountsPage() {
             <Download className="h-4 w-4 mr-2" />
             Export
           </Button>
-          <Button>
+          <Button onClick={handleNew}>
             <Plus className="h-4 w-4 mr-2" />
             New Account
           </Button>

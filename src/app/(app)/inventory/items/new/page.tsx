@@ -13,6 +13,7 @@ import { useAuthStore } from "@/lib/auth";
 import { api } from "@/lib/api";
 import { toast } from "react-hot-toast";
 import { ArrowLeft, Save, Package, DollarSign, Settings } from "lucide-react";
+import Link from "next/link";
 
 interface ItemForm {
   sku: string;
@@ -77,13 +78,20 @@ export default function NewItemPage() {
   const loadAccounts = async () => {
     try {
       setAccountsLoading(true);
-      const response = await api.get("/v1/accounts?filter[status]=ACTIVE&limit=1000");
+      const response = await api.get("/v1/accounts?limit=1000");
       if (response.success) {
-        setAccounts(response.data || []);
+        const list = Array.isArray(response.data) ? response.data : [];
+        setAccounts(list as any);
+        try {
+          const rev = list.filter((a: any) => a.type === 'REVENUE').length;
+          const exp = list.filter((a: any) => a.type === 'EXPENSE').length;
+          const ast = list.filter((a: any) => a.type === 'ASSET').length;
+          toast.success(`Loaded accounts • Revenue: ${rev} • Expense: ${exp} • Asset: ${ast}`);
+        } catch (_) {}
       }
-    } catch (error) {
-      console.error("Failed to load accounts:", error);
-      toast.error("Failed to load accounts");
+    } catch (error: any) {
+      console.error("Failed to load accounts:", error?.message || error);
+      toast.error(error?.message || "Failed to load accounts");
     } finally {
       setAccountsLoading(false);
     }
@@ -97,38 +105,48 @@ export default function NewItemPage() {
   };
 
   // Helper functions to filter accounts by type
-  const getRevenueAccounts = () => accounts.filter(account => account.type === 'REVENUE');
-  const getExpenseAccounts = () => accounts.filter(account => account.type === 'EXPENSE');
-  const getAssetAccounts = () => accounts.filter(account => account.type === 'ASSET');
+  const getRevenueAccounts = () => accounts.filter((account: any) => account.type === 'REVENUE');
+  const getExpenseAccounts = () => accounts.filter((account: any) => account.type === 'EXPENSE');
+  const getAssetAccounts = () => accounts.filter((account: any) => account.type === 'ASSET');
 
-  const getAccountDisplayName = (account: Account) => `${account.code} - ${account.name}`;
+  const getAccountDisplayName = (account: any) => `${account.code} - ${account.name}`;
 
   const handleSave = async () => {
     try {
       setLoading(true);
       
-      const response = await api.post("/v1/items", {
+      const toCosting = (val: string) => {
+        if (val === 'AVERAGE') return 'WEIGHTED_AVG';
+        return val;
+      };
+
+      const payload: any = {
         sku: form.sku,
         name: form.name,
-        description: form.description,
         type: form.type,
-        category: form.category,
-        uom: form.unitOfMeasure, // Map unitOfMeasure to uom
-        unitPrice: form.unitPrice,
-        costPrice: form.costPrice,
-        reorderPoint: form.reorderPoint,
-        valuationMethod: form.valuationMethod,
-        isActive: form.isActive,
-        isInventoryTracked: form.isInventoryTracked,
-        isService: form.isService,
-        incomeAccountId: form.incomeAccount || null, // Map to incomeAccountId
-        expenseAccountId: form.expenseAccount || null, // Map to expenseAccountId
-        assetAccountId: form.assetAccount && form.assetAccount !== "no-asset" ? form.assetAccount : null, // Map to assetAccountId
-        notes: form.notes,
-        organizationId: orgId,
-        createdBy: user?._id,
-        updatedBy: user?._id,
-      });
+        uom: form.unitOfMeasure,
+        incomeAccountId: form.incomeAccount || undefined,
+        expenseAccountId: form.expenseAccount || undefined,
+        assetAccountId: form.assetAccount && form.assetAccount !== "no-asset" ? form.assetAccount : undefined,
+        pricing: {
+          basePrice: String(form.unitPrice ?? 0),
+          currency: 'USD'
+        },
+        status: form.isActive ? 'ACTIVE' : 'INACTIVE'
+      };
+
+      // Optional fields
+      if (form.category) payload.category = form.category;
+      if (form.description) payload.description = form.description;
+      if (form.isInventoryTracked || form.type === 'INVENTORY') {
+        payload.inventory = {
+          track: !!form.isInventoryTracked,
+          costing: toCosting(form.valuationMethod),
+          reorderPoint: form.reorderPoint ? String(form.reorderPoint) : null
+        };
+      }
+
+      const response = await api.post("/v1/items", payload);
 
       if (response.success) {
         toast.success("Item created successfully");
@@ -147,28 +165,36 @@ export default function NewItemPage() {
     try {
       setLoading(true);
       
-      const response = await api.post("/v1/items", {
+      const toCosting = (val: string) => {
+        if (val === 'AVERAGE') return 'WEIGHTED_AVG';
+        return val;
+      };
+
+      const payload: any = {
         sku: form.sku,
         name: form.name,
-        description: form.description,
         type: form.type,
-        category: form.category,
-        uom: form.unitOfMeasure, // Map unitOfMeasure to uom
-        unitPrice: form.unitPrice,
-        costPrice: form.costPrice,
-        reorderPoint: form.reorderPoint,
-        valuationMethod: form.valuationMethod,
-        isActive: form.isActive,
-        isInventoryTracked: form.isInventoryTracked,
-        isService: form.isService,
-        incomeAccountId: form.incomeAccount || null, // Map to incomeAccountId
-        expenseAccountId: form.expenseAccount || null, // Map to expenseAccountId
-        assetAccountId: form.assetAccount && form.assetAccount !== "no-asset" ? form.assetAccount : null, // Map to assetAccountId
-        notes: form.notes,
-        organizationId: orgId,
-        createdBy: user?._id,
-        updatedBy: user?._id,
-      });
+        uom: form.unitOfMeasure,
+        incomeAccountId: form.incomeAccount || undefined,
+        expenseAccountId: form.expenseAccount || undefined,
+        assetAccountId: form.assetAccount && form.assetAccount !== "no-asset" ? form.assetAccount : undefined,
+        pricing: {
+          basePrice: String(form.unitPrice ?? 0),
+          currency: 'USD'
+        },
+        status: form.isActive ? 'ACTIVE' : 'INACTIVE'
+      };
+      if (form.category) payload.category = form.category;
+      if (form.description) payload.description = form.description;
+      if (form.isInventoryTracked || form.type === 'INVENTORY') {
+        payload.inventory = {
+          track: !!form.isInventoryTracked,
+          costing: toCosting(form.valuationMethod),
+          reorderPoint: form.reorderPoint ? String(form.reorderPoint) : null
+        };
+      }
+
+      const response = await api.post("/v1/items", payload);
 
       if (response.success) {
         toast.success("Item created successfully");
@@ -414,13 +440,34 @@ export default function NewItemPage() {
                     <SelectTrigger>
                       <SelectValue placeholder={accountsLoading ? "Loading accounts..." : "Select income account"} />
                     </SelectTrigger>
-                    <SelectContent>
-                      {getRevenueAccounts().map((account) => (
+                  <SelectContent>
+                    {(() => {
+                      const revenue = getRevenueAccounts();
+                      const list = revenue.length > 0 ? revenue : accounts;
+                      if (!accountsLoading && revenue.length === 0) {
+                        return (
+                          <>
+                            <div className="px-2 py-2 text-xs text-muted-foreground">
+                              No revenue accounts found. Showing all accounts.
+                            </div>
+                            {list.map((account: any) => (
+                              <SelectItem key={account._id} value={account._id}>
+                                {getAccountDisplayName(account)}
+                              </SelectItem>
+                            ))}
+                            <div className="px-2 py-2 text-xs text-muted-foreground">
+                              Prefer to create one? <Link href="/gl/chart-of-accounts/new" className="underline">Create account</Link>
+                            </div>
+                          </>
+                        );
+                      }
+                      return list.map((account: any) => (
                         <SelectItem key={account._id} value={account._id}>
                           {getAccountDisplayName(account)}
                         </SelectItem>
-                      ))}
-                    </SelectContent>
+                      ));
+                    })()}
+                  </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
@@ -433,13 +480,34 @@ export default function NewItemPage() {
                     <SelectTrigger>
                       <SelectValue placeholder={accountsLoading ? "Loading accounts..." : "Select expense account"} />
                     </SelectTrigger>
-                    <SelectContent>
-                      {getExpenseAccounts().map((account) => (
+                  <SelectContent>
+                    {(() => {
+                      const expense = getExpenseAccounts();
+                      const list = expense.length > 0 ? expense : accounts;
+                      if (!accountsLoading && expense.length === 0) {
+                        return (
+                          <>
+                            <div className="px-2 py-2 text-xs text-muted-foreground">
+                              No expense accounts found. Showing all accounts.
+                            </div>
+                            {list.map((account: any) => (
+                              <SelectItem key={account._id} value={account._id}>
+                                {getAccountDisplayName(account)}
+                              </SelectItem>
+                            ))}
+                            <div className="px-2 py-2 text-xs text-muted-foreground">
+                              Prefer to create one? <Link href="/gl/chart-of-accounts/new" className="underline">Create account</Link>
+                            </div>
+                          </>
+                        );
+                      }
+                      return list.map((account: any) => (
                         <SelectItem key={account._id} value={account._id}>
                           {getAccountDisplayName(account)}
                         </SelectItem>
-                      ))}
-                    </SelectContent>
+                      ));
+                    })()}
+                  </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
@@ -454,11 +522,32 @@ export default function NewItemPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="no-asset">No Asset Account</SelectItem>
-                      {getAssetAccounts().map((account) => (
+                    {(() => {
+                      const asset = getAssetAccounts();
+                      const list = asset.length > 0 ? asset : accounts;
+                      if (!accountsLoading && asset.length === 0) {
+                        return (
+                          <>
+                            <div className="px-2 py-2 text-xs text-muted-foreground">
+                              No asset accounts found. Showing all accounts.
+                            </div>
+                            {list.map((account: any) => (
+                              <SelectItem key={account._id} value={account._id}>
+                                {getAccountDisplayName(account)}
+                              </SelectItem>
+                            ))}
+                            <div className="px-2 py-2 text-xs text-muted-foreground">
+                              Prefer to create one? <Link href="/gl/chart-of-accounts/new" className="underline">Create account</Link>
+                            </div>
+                          </>
+                        );
+                      }
+                      return list.map((account: any) => (
                         <SelectItem key={account._id} value={account._id}>
                           {getAccountDisplayName(account)}
                         </SelectItem>
-                      ))}
+                      ));
+                    })()}
                     </SelectContent>
                   </Select>
                 </div>

@@ -109,7 +109,6 @@ export default function NewAccountPage() {
   const handleSave = async () => {
     try {
       setLoading(true);
-      
       const response = await api.post("/v1/accounts", {
         ...form,
         parentId: form.parentId ? form.parentId : null,
@@ -134,7 +133,6 @@ export default function NewAccountPage() {
   const handleSaveAndNew = async () => {
     try {
       setLoading(true);
-      
       const response = await api.post("/v1/accounts", {
         ...form,
         parentId: form.parentId ? form.parentId : null,
@@ -145,7 +143,6 @@ export default function NewAccountPage() {
 
       if (response.success) {
         toast.success("Account created successfully");
-        // Reset form for new account
         setForm({
           code: "",
           name: "",
@@ -201,7 +198,6 @@ export default function NewAccountPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          {/* Basic Information */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -246,7 +242,7 @@ export default function NewAccountPage() {
                     value={form.type}
                     onValueChange={(value) => {
                       handleInputChange("type", value);
-                      handleInputChange("category", ""); // Reset category when type changes
+                      handleInputChange("category", "");
                     }}
                   >
                     <SelectTrigger>
@@ -303,7 +299,6 @@ export default function NewAccountPage() {
             </CardContent>
           </Card>
 
-          {/* Settings */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -331,7 +326,6 @@ export default function NewAccountPage() {
           </Card>
         </div>
 
-        {/* Actions Sidebar */}
         <div className="space-y-6">
           <Card>
             <CardHeader>
@@ -365,7 +359,6 @@ export default function NewAccountPage() {
             </CardContent>
           </Card>
 
-          {/* Account Preview */}
           <Card>
             <CardHeader>
               <CardTitle>Account Preview</CardTitle>
@@ -402,3 +395,5 @@ export default function NewAccountPage() {
     </div>
   );
 }
+
+

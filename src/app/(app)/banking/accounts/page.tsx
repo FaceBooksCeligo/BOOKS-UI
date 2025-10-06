@@ -67,7 +67,22 @@ const BankingAccountsPage = () => {
       const response = await api.get<BankAccount[]>("/v1/banking/accounts");
       
       if (response.success) {
-        const list = (response.data as BankAccount[]) || [];
+        const raw = (response.data as any[]) || [];
+        // Normalize API shape -> UI shape
+        const list: BankAccount[] = raw.map((a: any) => ({
+          id: a.id || a._id,
+          accountName: a.accountName || a.name || "",
+          accountNumber: String(a.accountNumber || ""),
+          bankName: a.bankName || "",
+          accountType: a.accountType || 'CHECKING',
+          currency: a.currency || 'USD',
+          currentBalance: typeof a.currentBalance === 'number' ? a.currentBalance : 0,
+          availableBalance: typeof a.availableBalance === 'number' ? a.availableBalance : 0,
+          status: a.status || 'ACTIVE',
+          description: a.description,
+          createdAt: a.createdAt || new Date().toISOString(),
+          updatedAt: a.updatedAt || new Date().toISOString(),
+        }));
         setAccounts(list);
         calculateSummary(list);
       } else {
@@ -139,28 +154,30 @@ const BankingAccountsPage = () => {
     }).format(amount);
   };
 
-  const filteredAccounts = accounts.filter(account =>
-    account.accountName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    account.bankName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    account.accountNumber.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredAccounts = accounts.filter(account => {
+    const name = (account.accountName || '').toLowerCase();
+    const bank = (account.bankName || '').toLowerCase();
+    const number = String(account.accountNumber || '').toLowerCase();
+    const term = (searchTerm || '').toLowerCase();
+    return name.includes(term) || bank.includes(term) || number.includes(term);
+  });
 
   const columns = [
     {
       accessorKey: "accountName",
       header: "Account",
       cell: ({ row }: any) => {
-        const account = row.original;
-        const Icon = getAccountTypeIcon(account.accountType);
+        const account = row.original || row;
+        const Icon = getAccountTypeIcon(account?.accountType || 'CHECKING');
         return (
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
               <Icon className="h-4 w-4" />
             </div>
             <div>
-              <div className="font-medium">{account.accountName}</div>
+              <div className="font-medium">{account?.accountName || ''}</div>
               <div className="text-sm text-muted-foreground">
-                {getAccountTypeLabel(account.accountType)} • {account.bankName}
+                {getAccountTypeLabel(account?.accountType || 'CHECKING')} • {account?.bankName || ''}
               </div>
             </div>
           </div>
@@ -171,10 +188,10 @@ const BankingAccountsPage = () => {
       accessorKey: "accountNumber",
       header: "Account Number",
       cell: ({ row }: any) => {
-        const account = row.original;
+        const account = row.original || row;
         return (
           <div className="font-mono text-sm">
-            ****{account.accountNumber.slice(-4)}
+            ****{String(account?.accountNumber || '').slice(-4)}
           </div>
         );
       },
@@ -183,14 +200,14 @@ const BankingAccountsPage = () => {
       accessorKey: "currentBalance",
       header: "Current Balance",
       cell: ({ row }: any) => {
-        const account = row.original;
+        const account = row.original || row;
         return (
           <div className="text-right">
-            <div className={`font-medium ${account.currentBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {formatCurrency(account.currentBalance, account.currency)}
+            <div className={`font-medium ${(account?.currentBalance ?? 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              {formatCurrency(account?.currentBalance ?? 0, account?.currency || 'USD')}
             </div>
             <div className="text-sm text-muted-foreground">
-              Available: {formatCurrency(account.availableBalance, account.currency)}
+              Available: {formatCurrency(account?.availableBalance ?? 0, account?.currency || 'USD')}
             </div>
           </div>
         );
@@ -200,35 +217,35 @@ const BankingAccountsPage = () => {
       accessorKey: "status",
       header: "Status",
       cell: ({ row }: any) => {
-        const account = row.original;
-        return getStatusBadge(account.status);
+        const account = row.original || row;
+        return getStatusBadge(account?.status || 'ACTIVE');
       },
     },
     {
       id: "actions",
       header: "Actions",
       cell: ({ row }: any) => {
-        const account = row.original;
+        const account = row.original || row;
         return (
           <div className="flex items-center gap-2">
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => router.push(`/banking/accounts/${account.id}`)}
+              onClick={() => router.push(`/banking/accounts/${account?.id}`)}
             >
               <Eye className="h-4 w-4" />
             </Button>
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => router.push(`/banking/accounts/${account.id}/edit`)}
+              onClick={() => router.push(`/banking/accounts/${account?.id}/edit`)}
             >
               <Edit className="h-4 w-4" />
             </Button>
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => handleDelete(account.id)}
+              onClick={() => account?.id && handleDelete(account.id)}
             >
               <Trash2 className="h-4 w-4" />
             </Button>

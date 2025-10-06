@@ -169,7 +169,7 @@ const InventoryAdjustmentsPage = () => {
       accessorKey: "adjustmentNumber",
       header: "Adjustment #",
       cell: ({ row }: any) => {
-        const adjustment = row.original;
+        const adjustment = row?.original || row;
         return (
           <div className="flex items-center gap-2">
             <Package className="h-4 w-4 text-muted-foreground" />
@@ -182,7 +182,7 @@ const InventoryAdjustmentsPage = () => {
       accessorKey: "adjustmentDate",
       header: "Date",
       cell: ({ row }: any) => {
-        const adjustment = row.original;
+        const adjustment = row?.original || row;
         return (
           <div className="flex items-center gap-2">
             <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -195,7 +195,7 @@ const InventoryAdjustmentsPage = () => {
       accessorKey: "type",
       header: "Type",
       cell: ({ row }: any) => {
-        const adjustment = row.original;
+        const adjustment = row?.original || row;
         const Icon = getTypeIcon(adjustment.type);
         return (
           <div className="flex items-center gap-2">
@@ -211,7 +211,7 @@ const InventoryAdjustmentsPage = () => {
       accessorKey: "reason",
       header: "Reason",
       cell: ({ row }: any) => {
-        const adjustment = row.original;
+        const adjustment = row?.original || row;
         return (
           <div>
             <div className="font-medium">{adjustment.reason}</div>
@@ -226,7 +226,7 @@ const InventoryAdjustmentsPage = () => {
       accessorKey: "totalValue",
       header: "Total Value",
       cell: ({ row }: any) => {
-        const adjustment = row.original;
+        const adjustment = row?.original || row;
         return (
           <div className="text-right">
             <div className="font-medium">{formatCurrency(adjustment.totalValue)}</div>
@@ -241,7 +241,7 @@ const InventoryAdjustmentsPage = () => {
       accessorKey: "status",
       header: "Status",
       cell: ({ row }: any) => {
-        const adjustment = row.original;
+        const adjustment = row?.original || row;
         return getStatusBadge(adjustment.status);
       },
     },
@@ -249,7 +249,7 @@ const InventoryAdjustmentsPage = () => {
       id: "actions",
       header: "Actions",
       cell: ({ row }: any) => {
-        const adjustment = row.original;
+        const adjustment = row?.original || row;
         return (
           <div className="flex items-center gap-2">
             <Button

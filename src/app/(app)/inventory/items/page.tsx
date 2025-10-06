@@ -45,7 +45,16 @@ export default function ItemsPage() {
     try {
       const response = await api.get<any[]>("/v1/items");
       if (response.success) {
-        setItems((response.data as any[]) || []);
+        const raw = (response.data as any[]) || [];
+        const list = raw.map((i: any) => ({
+          ...i,
+          id: i.id || i._id,
+          // Normalize fields for display fallbacks
+          onHand: i.onHand ?? 0,
+          reorderPoint: i.inventory?.reorderPoint ? parseFloat(i.inventory.reorderPoint) : (i.reorderPoint ?? 0),
+          valuationMethod: i.inventory?.costing || i.valuationMethod || 'FIFO'
+        }));
+        setItems(list as any);
       }
     } catch (error: any) {
       toast.error(error.message || "Failed to load items");
@@ -90,29 +99,29 @@ export default function ItemsPage() {
       accessorKey: "sku",
       header: "SKU",
       cell: ({ row }: any) => (
-        <div className="font-mono text-sm">{row.getValue("sku")}</div>
+        <div className="font-mono text-sm">{row.sku}</div>
       ),
     },
     {
       accessorKey: "name",
       header: "Item Name",
       cell: ({ row }: any) => (
-        <div className="font-medium">{row.getValue("name")}</div>
+        <div className="font-medium">{row.name}</div>
       ),
     },
     {
       accessorKey: "type",
       header: "Type",
       cell: ({ row }: any) => (
-        <Badge variant="outline">{row.getValue("type")}</Badge>
+        <Badge variant="outline">{row.type}</Badge>
       ),
     },
     {
       accessorKey: "onHand",
       header: "On Hand",
       cell: ({ row }: any) => {
-        const onHand = row.getValue("onHand");
-        const reorderPoint = row.getValue("reorderPoint");
+        const onHand = row.onHand;
+        const reorderPoint = row.reorderPoint;
         const isLowStock = onHand <= reorderPoint;
         
         return (
@@ -129,14 +138,14 @@ export default function ItemsPage() {
       accessorKey: "reorderPoint",
       header: "Reorder Point",
       cell: ({ row }: any) => (
-        <div className="font-mono">{row.getValue("reorderPoint")}</div>
+        <div className="font-mono">{row.reorderPoint}</div>
       ),
     },
     {
       accessorKey: "valuationMethod",
       header: "Valuation",
       cell: ({ row }: any) => (
-        <Badge variant="secondary">{row.getValue("valuationMethod")}</Badge>
+        <Badge variant="secondary">{row.valuationMethod}</Badge>
       ),
     },
     {
@@ -145,11 +154,11 @@ export default function ItemsPage() {
       cell: ({ row }: any) => (
         <Badge 
           variant={
-            row.getValue("status") === "ACTIVE" ? "default" : 
-            row.getValue("status") === "INACTIVE" ? "secondary" : "destructive"
+            row.status === "ACTIVE" ? "default" : 
+            row.status === "INACTIVE" ? "secondary" : "destructive"
           }
         >
-          {row.getValue("status")}
+          {row.status}
         </Badge>
       ),
     },
@@ -164,17 +173,17 @@ export default function ItemsPage() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => handleView(row.original.id)}>
+            <DropdownMenuItem onClick={() => handleView(row.id)}>
               <Eye className="h-4 w-4 mr-2" />
               View
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleEdit(row.original.id)}>
+            <DropdownMenuItem onClick={() => handleEdit(row.id)}>
               Edit
             </DropdownMenuItem>
             <DropdownMenuItem>Duplicate</DropdownMenuItem>
             <DropdownMenuItem 
               className="text-red-600" 
-              onClick={() => handleDelete(row.original.id)}
+              onClick={() => handleDelete(row.id)}
             >
               Delete
             </DropdownMenuItem>

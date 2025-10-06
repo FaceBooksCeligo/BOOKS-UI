@@ -6,6 +6,8 @@ class ApiClient {
   private baseURL: string;
   private token: string | null = null;
   private orgId: string | null = null;
+  private entityId: string | null = null;
+  private unauthorizedHandler: (() => void) | null = null;
 
   constructor(baseURL: string) {
     this.baseURL = baseURL;
@@ -17,6 +19,14 @@ class ApiClient {
 
   setOrgId(orgId: string | null) {
     this.orgId = orgId;
+  }
+
+  setEntityId(entityId: string | null) {
+    this.entityId = entityId;
+  }
+
+  setUnauthorizedHandler(handler: (() => void) | null) {
+    this.unauthorizedHandler = handler;
   }
 
   private async request<T>(
@@ -36,6 +46,11 @@ class ApiClient {
     if (this.orgId) {
       headers['X-Org-ID'] = this.orgId;
     }
+    if (this.entityId) {
+      headers['X-Entity-ID'] = this.entityId;
+    }
+
+    console.log("API Request:", { url, headers: { ...headers, Authorization: headers.Authorization ? 'Bearer [REDACTED]' : 'None' } });
 
     const response = await fetch(url, {
       ...options,
@@ -43,8 +58,18 @@ class ApiClient {
     });
 
     if (!response.ok) {
-      const error: ApiError = await response.json();
-      throw new Error(error.detail || 'An error occurred');
+      let errorBody: any = null;
+      try {
+        errorBody = await response.json();
+      } catch (_) {
+        // ignore json parse errors
+      }
+      if (response.status === 401 && this.unauthorizedHandler) {
+        try { this.unauthorizedHandler(); } catch (_) { /* noop */ }
+      }
+      console.error("API Error:", { status: response.status, error: errorBody });
+      const message = (errorBody && (errorBody.detail || errorBody.message)) || 'An error occurred';
+      throw new Error(message);
     }
 
     const data = await response.json();
@@ -327,6 +352,50 @@ class ApiClient {
     return this.request(`/v1/contacts/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
+    });
+  }
+
+  // Credit Memo endpoints
+  async getCreditMemos(params?: {
+    'filter[status]'?: string;
+    customerId?: string;
+  }) {
+    const searchParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) {
+          searchParams.append(key, value.toString());
+        }
+      });
+    }
+    
+    const queryString = searchParams.toString();
+    const endpoint = queryString ? `/v1/credit-memos?${queryString}` : '/v1/credit-memos';
+    
+    return this.request(endpoint);
+  }
+
+  async getCreditMemo(id: string) {
+    return this.request(`/v1/credit-memos/${id}`);
+  }
+
+  async createCreditMemo(data: any) {
+    return this.request('/v1/credit-memos', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateCreditMemo(id: string, data: any) {
+    return this.request(`/v1/credit-memos/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteCreditMemo(id: string) {
+    return this.request(`/v1/credit-memos/${id}`, {
+      method: 'DELETE',
     });
   }
 

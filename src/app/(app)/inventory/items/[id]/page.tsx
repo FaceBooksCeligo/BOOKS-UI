@@ -39,7 +39,7 @@ export default function ItemDetailPage() {
   const router = useRouter();
   const params = useParams();
   const { user } = useAuthStore();
-  const [item, setItem] = useState<Item | null>(null);
+  const [item, setItem] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -50,9 +50,20 @@ export default function ItemDetailPage() {
 
   const loadItem = async () => {
     try {
-      const response = await api.get<Item>(`/v1/items/${params.id}`);
+      const response = await api.get<any>(`/v1/items/${params.id}`);
       if (response.success) {
-        setItem(response.data as Item);
+        const i: any = response.data || {};
+        const normalized = {
+          ...i,
+          id: i.id || i._id,
+          unitPrice: i.pricing?.basePrice ? parseFloat(i.pricing.basePrice) : (i.unitPrice ?? 0),
+          costPrice: typeof i.costPrice === 'number' ? i.costPrice : 0,
+          onHand: i.onHand ?? 0,
+          reorderPoint: i.inventory?.reorderPoint ? parseFloat(i.inventory.reorderPoint) : (i.reorderPoint ?? 0),
+          valuationMethod: i.inventory?.costing || i.valuationMethod || 'FIFO',
+          unitOfMeasure: i.uom || i.unitOfMeasure || 'EACH'
+        };
+        setItem(normalized);
       } else {
         toast.error("Failed to load item");
         router.push("/inventory/items");
@@ -205,11 +216,11 @@ export default function ItemDetailPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label className="text-sm font-medium text-muted-foreground">Unit Price</Label>
-                  <p className="text-lg font-semibold">${item.unitPrice.toFixed(2)}</p>
+                  <p className="text-lg font-semibold">${(item.unitPrice ?? 0).toFixed(2)}</p>
                 </div>
                 <div>
                   <Label className="text-sm font-medium text-muted-foreground">Cost Price</Label>
-                  <p className="text-lg font-semibold">${item.costPrice.toFixed(2)}</p>
+                  <p className="text-lg font-semibold">${(item.costPrice ?? 0).toFixed(2)}</p>
                 </div>
                 <div>
                   <Label className="text-sm font-medium text-muted-foreground">On Hand</Label>
